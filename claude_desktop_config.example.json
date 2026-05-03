@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "prompt-library": {
+      "command": "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3",
+      "args": ["-m", "prompt_library.server"],
+      "cwd": "/Users/yulin/projects/prompt-library",
+      "env": {
+        "LIBRARY_PATH": "",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
