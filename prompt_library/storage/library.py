@@ -438,6 +438,53 @@ class Library:
         ]
 
     # ------------------------------------------------------------------ #
+    # Tag summary                                                        #
+    # ------------------------------------------------------------------ #
+
+    def tag_summary(self) -> dict:
+        """Counts per tag across projects + prompts, plus untagged buckets
+        and near-duplicate detection (case- or punctuation-only variants).
+        """
+        rows = self.conn.execute(
+            "SELECT t.name, "
+            " (SELECT COUNT(*) FROM project_tags pt WHERE pt.tag_id = t.id) AS proj, "
+            " (SELECT COUNT(*) FROM prompt_tags qt WHERE qt.tag_id = t.id) AS prompt "
+            "FROM tags t ORDER BY t.name"
+        ).fetchall()
+        by_tag = {
+            r["name"]: {"projects": int(r["proj"]), "prompts": int(r["prompt"])}
+            for r in rows
+        }
+
+        untagged_projects = self.conn.execute(
+            "SELECT COUNT(*) FROM projects WHERE id NOT IN "
+            "(SELECT project_id FROM project_tags)"
+        ).fetchone()[0]
+        untagged_prompts = self.conn.execute(
+            "SELECT COUNT(*) FROM prompts WHERE id NOT IN "
+            "(SELECT prompt_id FROM prompt_tags)"
+        ).fetchone()[0]
+
+        # Near-duplicates: tags whose alnum-canonical forms collide.
+        import re
+        canonical: dict[str, list[str]] = {}
+        for name in by_tag:
+            key = re.sub(r"[^a-z0-9]", "", name)
+            if key:
+                canonical.setdefault(key, []).append(name)
+        near_dupes = [sorted(vs) for vs in canonical.values() if len(vs) > 1]
+        near_dupes.sort()
+
+        return {
+            "by_tag": by_tag,
+            "untagged": {
+                "projects": int(untagged_projects),
+                "prompts": int(untagged_prompts),
+            },
+            "near_duplicates": near_dupes,
+        }
+
+    # ------------------------------------------------------------------ #
     # Internal helpers                                                   #
     # ------------------------------------------------------------------ #
 

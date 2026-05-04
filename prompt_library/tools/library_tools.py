@@ -1,8 +1,16 @@
-"""MCP tool stubs for tag summaries, export/import, and backup.
-
-Real logic lands in Prompt 5 (export/import + tag_summary) and Prompt 6 (backup).
-"""
+"""MCP tools for tag summaries, export/import, and backup."""
 from __future__ import annotations
+
+import logging
+
+from prompt_library.storage import io as storage_io
+from prompt_library.storage.connection import get_library
+
+log = logging.getLogger(__name__)
+
+
+def _error(msg: str, **extra) -> dict:
+    return {"error": msg, **extra}
 
 
 def tag_summary() -> dict:
@@ -10,14 +18,14 @@ def tag_summary() -> dict:
 
     Returns:
         Dict with by_tag (tag → {projects, prompts}), untagged counts,
-        and a list of near_duplicates (case/punctuation variants).
+        and a list of near_duplicates (tags whose alphanumeric-canonical
+        forms collide — useful for spotting accidental variants).
     """
-    return {
-        "_stub": True,
-        "by_tag": {},
-        "untagged": {"projects": 0, "prompts": 0},
-        "near_duplicates": [],
-    }
+    try:
+        return get_library().tag_summary()
+    except Exception as e:
+        log.exception("tag_summary failed")
+        return _error(str(e))
 
 
 def export_library(
@@ -30,44 +38,36 @@ def export_library(
     Args:
         kind: One of 'projects', 'prompts', 'all'.
         format: One of 'markdown', 'json'.
-        dest: Optional override for the output directory or file.
+        dest: Optional output directory (markdown) or file path (json).
 
     Returns:
-        Dict with the list of paths written.
+        Dict with kind, format, dest, paths (list of files written), counts.
     """
-    return {
-        "_stub": True,
-        "kind": kind,
-        "format": format,
-        "dest": dest,
-        "paths": [],
-    }
+    try:
+        return storage_io.export_library(get_library(), kind, format, dest)
+    except Exception as e:
+        log.exception("export_library failed")
+        return _error(str(e))
 
 
 def import_library(path: str, overwrite: bool = False) -> dict:
     """Import a previously exported markdown tree or JSON file.
 
     Args:
-        path: Path to the export root or JSON file.
+        path: Path to the export root or .json file.
         overwrite: If True, conflicts overwrite existing items;
-            otherwise conflicts raise an error.
+            otherwise conflicts are skipped (counted in `skipped`).
 
     Returns:
-        Dict with imported and skipped counts.
+        Dict with source, format, imported, skipped, errors.
     """
-    return {
-        "_stub": True,
-        "path": path,
-        "overwrite": overwrite,
-        "imported": 0,
-        "skipped": 0,
-    }
+    try:
+        return storage_io.import_library(get_library(), path, overwrite)
+    except Exception as e:
+        log.exception("import_library failed")
+        return _error(str(e))
 
 
 def backup_library() -> dict:
-    """Copy the SQLite library file to ./backups/library_YYYY-MM-DD-HHMM.db.
-
-    Returns:
-        Dict with the absolute path of the backup file.
-    """
+    """Stub for Prompt 6 — copies the SQLite file to ./backups/."""
     return {"_stub": True, "path": ""}
