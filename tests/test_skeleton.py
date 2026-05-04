@@ -53,9 +53,12 @@ def test_stub_tools_return_dicts():
 
 
 def test_delete_requires_confirm():
+    """Without confirm=True, delete tools must error before touching storage.
+
+    Successful-delete behavior is covered with proper setup in
+    tests/test_projects.py and tests/test_prompts.py.
+    """
     from prompt_library.tools import project_tools, prompt_tools
 
     assert "error" in project_tools.delete_project(1)
     assert "error" in prompt_tools.delete_prompt(1)
-    assert project_tools.delete_project(1, confirm=True).get("deleted") is True
-    assert prompt_tools.delete_prompt(1, confirm=True).get("deleted") is True
