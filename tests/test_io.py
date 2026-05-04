@@ -300,3 +300,59 @@ class TestLibraryToolWrappers:
         _wipe(lib_in_tools)
         result = library_tools.import_library(str(target))
         assert result["imported"] == 1
+
+
+# --------------------------------------------------------------------- #
+# Backup                                                                #
+# --------------------------------------------------------------------- #
+
+
+class TestBackup:
+    def test_library_backup_to(self, library, tmp_path):
+        library.add_project(name="p1")
+        dest = tmp_path / "snapshot.db"
+        path = library.backup_to(dest)
+        assert path.exists()
+        assert path.stat().st_size > 0
+
+    def test_backup_is_independent_snapshot(self, library, tmp_path):
+        library.add_project(name="before-backup")
+        dest = tmp_path / "snap.db"
+        library.backup_to(dest)
+        # Mutate source after backup completes.
+        library.add_project(name="after-backup")
+        # The snapshot should still only contain the pre-backup state.
+        snap = Library(dest)
+        try:
+            names = {p["name"] for p in snap.list_projects()}
+        finally:
+            snap.close()
+        assert names == {"before-backup"}
+
+    def test_backup_tool_writes_to_backups_dir(
+        self, lib_in_tools, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "prompt_library.tools.library_tools.BACKUPS_DIR", tmp_path
+        )
+        lib_in_tools.add_project(name="p1")
+        result = library_tools.backup_library()
+        assert "error" not in result
+        path = Path(result["path"])
+        assert path.exists()
+        assert path.parent == tmp_path.resolve()
+        assert path.name.startswith("library_") and path.name.endswith(".db")
+        assert result["size_bytes"] > 0
+
+    def test_backup_filename_uses_timestamp(
+        self, lib_in_tools, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "prompt_library.tools.library_tools.BACKUPS_DIR", tmp_path
+        )
+        result = library_tools.backup_library()
+        # YYYY-MM-DD-HHMM → 15 chars (e.g. 2026-05-04-1230)
+        assert len(result["timestamp"]) == 15
+        assert result["timestamp"][4] == "-"
+        assert result["timestamp"][7] == "-"
+        assert result["timestamp"][10] == "-"

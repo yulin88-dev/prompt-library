@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
+from prompt_library.config import BACKUPS_DIR
 from prompt_library.storage import io as storage_io
 from prompt_library.storage.connection import get_library
 
@@ -69,5 +71,25 @@ def import_library(path: str, overwrite: bool = False) -> dict:
 
 
 def backup_library() -> dict:
-    """Stub for Prompt 6 — copies the SQLite file to ./backups/."""
-    return {"_stub": True, "path": ""}
+    """Copy the live SQLite library to ./backups/library_YYYY-MM-DD-HHMM.db.
+
+    Uses the SQLite online backup API, so it's safe to run while the
+    database is being read or written.
+
+    Returns:
+        Dict with the absolute path of the backup, size in bytes, and the
+        timestamp used in the filename.
+    """
+    try:
+        BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d-%H%M")
+        dest = BACKUPS_DIR / f"library_{timestamp}.db"
+        path = get_library().backup_to(dest)
+        return {
+            "path": str(path.resolve()),
+            "size_bytes": path.stat().st_size,
+            "timestamp": timestamp,
+        }
+    except Exception as e:
+        log.exception("backup_library failed")
+        return _error(str(e))

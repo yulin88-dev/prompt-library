@@ -76,6 +76,21 @@ class Library:
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
 
+    def backup_to(self, dest: Path | str) -> Path:
+        """Copy the live SQLite database to `dest` using the SQLite backup API.
+
+        Safe to call while the database is being read or written — SQLite's
+        online backup serializes changes correctly, unlike `shutil.copy`.
+        """
+        dest_path = Path(dest)
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        dst_conn = sqlite3.connect(str(dest_path))
+        try:
+            self.conn.backup(dst_conn)
+        finally:
+            dst_conn.close()
+        return dest_path
+
     # ------------------------------------------------------------------ #
     # Projects                                                           #
     # ------------------------------------------------------------------ #
